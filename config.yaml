@@ -1,0 +1,40 @@
+analysis:
+  analysis_output_dir: analysis_output
+  auto_detect_protocols: true
+  enable_realtime_analysis: true
+  export_json: true
+  export_pcap: true
+  max_storage_size: 1073741824
+  retention_days: 30
+  save_raw_data: true
+  secure_storage_dir: secure_data
+research:
+  anonymize_data: true
+  enable_detailed_logging: true
+  enable_pattern_learning: false
+  export_metadata: true
+  protocol_detection_threshold: 0.6
+  research_mode: true
+  transaction_confidence_threshold: 0.5
+security:
+  allowed_ciphers: ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS
+  ca_file: null
+  cert_file: certs/server.crt
+  enable_encryption: true
+  enable_tls: true
+  key_file: certs/server.key
+  log_sensitive_data: false
+  max_session_size: 10485760
+  require_client_cert: false
+  session_timeout: 3600
+  tls_version: '1.2'
+server:
+  cors_origins: []
+  enable_compression: true
+  enable_cors: false
+  host: 0.0.0.0
+  log_level: INFO
+  max_connections: 100
+  max_session_duration: 7200
+  port: 8080
+  rate_limit: 1000

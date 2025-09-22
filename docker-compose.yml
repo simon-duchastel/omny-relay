@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  nfc-relay:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./certs:/app/certs
+      - ./logs:/app/logs
+      - ./output:/app/output
+      - ./secure:/app/secure
+    environment:
+      - NFC_HOST=0.0.0.0
+      - NFC_PORT=8080
+      - NFC_RESEARCH_MODE=true
+    restart: unless-stopped
+
+  # Optional: Add a web dashboard
+  # dashboard:
+  #   build: ./dashboard
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - nfc-relay

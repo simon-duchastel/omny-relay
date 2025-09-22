@@ -1,0 +1,79 @@
+syntax = "proto2";
+
+package nfcgate;
+
+// Wrapper message for all communications
+message Wrapper {
+    required WrapperType type = 1;
+    
+    optional SessionMessage session = 2;
+    optional DataMessage data = 3;
+    optional StatusMessage status = 4;
+}
+
+enum WrapperType {
+    SESSION = 1;
+    DATA = 2;
+    STATUS = 3;
+}
+
+// Session management messages
+message SessionMessage {
+    required SessionOpcode opcode = 1;
+    optional string session_id = 2;
+    optional ClientType client_type = 3;
+    
+    enum SessionOpcode {
+        SESSION_CREATE = 1;
+        SESSION_JOIN = 2;
+        SESSION_LEAVE = 3;
+        SESSION_DESTROY = 4;
+    }
+    
+    enum ClientType {
+        READER = 1;
+        CARD = 2;
+    }
+}
+
+// NFC data transmission
+message DataMessage {
+    required int32 error_code = 1;
+    required bytes nfc_data = 2;
+    optional int64 timestamp = 3;
+    optional string direction = 4; // "reader_to_card" or "card_to_reader"
+}
+
+// Status and control messages
+message StatusMessage {
+    required StatusType status = 1;
+    optional string message = 2;
+    optional int64 timestamp = 3;
+    
+    enum StatusType {
+        CONNECTED = 1;
+        DISCONNECTED = 2;
+        ERROR = 3;
+        NFC_ENABLED = 4;
+        NFC_DISABLED = 5;
+        CARD_DETECTED = 6;
+        CARD_REMOVED = 7;
+    }
+}
+
+// Transit card specific data
+message TransitCardData {
+    required string card_id = 1;
+    optional string card_type = 2;
+    optional bytes raw_data = 3;
+    optional int64 timestamp = 4;
+    repeated TransactionRecord transactions = 5;
+}
+
+message TransactionRecord {
+    required int64 timestamp = 1;
+    optional string transaction_type = 2;
+    optional int32 amount = 3;
+    optional string location = 4;
+    optional bytes raw_data = 5;
+}
