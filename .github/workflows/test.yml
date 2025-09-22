@@ -1,0 +1,222 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10", "3.11", "3.12"]
+        
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libssl-dev libffi-dev
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov pytest-timeout pytest-mock
+        
+    - name: Generate protocol buffers
+      run: |
+        python -m grpc_tools.protoc --python_out=. --grpc_python_out=. --proto_path=. src/protocol/messages.proto
+        
+    - name: Run unit tests
+      run: |
+        pytest tests/unit/ -v --cov=src --cov=server --cov-report=xml -m "not slow"
+        
+    - name: Run integration tests
+      run: |
+        pytest tests/integration/ -v -m "not slow"
+        
+    - name: Run security tests
+      run: |
+        pytest tests/security/ -v -m "not slow"
+        
+    - name: Run Android simulation tests
+      run: |
+        pytest tests/android/ -v -m "not slow"
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety semgrep
+        pip install -r requirements.txt
+        
+    - name: Run Bandit security linter
+      run: |
+        bandit -r src/ server/ -f json -o bandit-report.json
+        bandit -r src/ server/ --severity-level medium
+        
+    - name: Check for known vulnerabilities
+      run: |
+        safety check --json --output safety-report.json
+        safety check
+        
+    - name: Run Semgrep security analysis
+      run: |
+        semgrep --config=auto src/ server/ --json --output=semgrep-report.json
+        
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+          semgrep-report.json
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-benchmark
+        
+    - name: Generate protocol buffers
+      run: |
+        python -m grpc_tools.protoc --python_out=. --grpc_python_out=. --proto_path=. src/protocol/messages.proto
+        
+    - name: Run performance tests
+      run: |
+        pytest tests/ -v -m "performance" --benchmark-only --benchmark-json=benchmark.json
+        
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark.json
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install quality tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort flake8 mypy pylint
+        pip install -r requirements.txt
+        
+    - name: Check code formatting with Black
+      run: |
+        black --check --diff src/ server/ tests/
+        
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff src/ server/ tests/
+        
+    - name: Lint with flake8
+      run: |
+        flake8 src/ server/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+        
+    - name: Type checking with mypy
+      run: |
+        mypy src/ server/ --ignore-missing-imports --no-strict-optional
+        
+    - name: Lint with pylint
+      run: |
+        pylint src/ server/ --disable=missing-docstring,too-few-public-methods
+
+  docker-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker image
+      run: |
+        docker build -t nfc-relay-test .
+        
+    - name: Test Docker container
+      run: |
+        docker run --rm -d --name nfc-relay-test -p 8080:8080 nfc-relay-test
+        sleep 10
+        curl -k https://localhost:8080/health || curl http://localhost:8080/health
+        docker stop nfc-relay-test
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install documentation tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install sphinx sphinx-rtd-theme myst-parser
+        pip install -r requirements.txt
+        
+    - name: Check documentation links
+      run: |
+        # Check for broken links in markdown files
+        find . -name "*.md" -exec grep -l "http" {} \; | head -5
+        
+    - name: Validate README
+      run: |
+        test -f README.md
+        test -f GETTING_STARTED.md
+        test -f docs/API_REFERENCE.md
+        test -f docs/DEPLOYMENT_GUIDE.md

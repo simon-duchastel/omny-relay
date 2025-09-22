@@ -1,0 +1,28 @@
+# Testing dependencies for NFC relay system
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+pytest-timeout>=2.1.0
+pytest-mock>=3.10.0
+pytest-benchmark>=4.0.0
+pytest-xdist>=3.0.0
+
+# Code quality tools
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.0.0
+pylint>=2.17.0
+
+# Security tools
+bandit>=1.7.0
+safety>=2.3.0
+
+# Documentation tools
+sphinx>=6.0.0
+sphinx-rtd-theme>=1.2.0
+myst-parser>=1.0.0
+
+# Development tools
+pre-commit>=3.0.0
+tox>=4.0.0
